@@ -43,7 +43,7 @@
 /// | \--lat        | -l          | -1            | lattice parameter (Angstroms)
 /// | \--temp       | -T          | 600           | initial temperature (K)
 /// | \--delta      | -r          | 0             | initial delta (Angstroms)
-///
+
 /// Notes: 
 /// 
 /// The negative value for the lattice parameter (such as the default
@@ -226,7 +226,6 @@ Command parseCommandLine(int argc, char** argv)
    addArg("lat",        'l', 1, 'd',  &(cmd.lat),          0,             "lattice parameter (Angstroms)");
    addArg("temp",       'T', 1, 'd',  &(cmd.temperature),  0,             "initial temperature (K)");
    addArg("delta",      'r', 1, 'd',  &(cmd.initialDelta), 0,             "initial delta (Angstroms)");
-
    processArgs(argc,argv);
 
    // If user didn't set potName, set type dependent default.

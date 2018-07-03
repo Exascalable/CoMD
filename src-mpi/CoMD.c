@@ -80,36 +80,56 @@ static void printThings(SimFlat* s, int iStep, double elapsedTime);
 static void printSimulationDataYaml(FILE* file, SimFlat* s);
 static void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeType[8]);
 
+static void application_checkpoint_write(int rank, int step, int doeam, SimFlat* sim, Validate* validate);
+static SimFlat* application_checkpoint_read(int rank, int *step, int *doeam, Validate** validate);
 
 int main(int argc, char** argv)
 {
    // Prolog
+	int nSteps, iStep, printRate, isEam;
+	SimFlat* sim;
+	Validate* validate;
+	Command cmd;
+
    initParallel(&argc, &argv);
-   profileStart(totalTimer);
-   initSubsystems();
-   timestampBarrier("Starting Initialization\n");
+   //initSubsystems();
 
-   yamlAppInfo(yamlFile);
-   yamlAppInfo(screenOut);
+#ifdef RESTART
+	   initSubsystems();
+	   sim = application_checkpoint_read(getMyRank(), &iStep, &isEam, &validate);
 
-   Command cmd = parseCommandLine(argc, argv);
-   printCmdYaml(yamlFile, &cmd);
-   printCmdYaml(screenOut, &cmd);
+	   timestampBarrier("Restarting Initialization\n");
+	   nSteps = sim->nSteps;
+	   printRate = sim->printRate;
+#else
 
-   SimFlat* sim = initSimulation(cmd);
-   printSimulationDataYaml(yamlFile, sim);
-   printSimulationDataYaml(screenOut, sim);
+	   profileStart(totalTimer);
+	   initSubsystems();
+	   timestampBarrier("Starting Initialization\n");
 
-   Validate* validate = initValidate(sim); // atom counts, energy
-   timestampBarrier("Initialization Finished\n");
+	   yamlAppInfo(yamlFile);
+	   yamlAppInfo(screenOut);
 
-   timestampBarrier("Starting simulation\n");
+	   cmd = parseCommandLine(argc, argv);
+	   printCmdYaml(yamlFile, &cmd);
+	   printCmdYaml(screenOut, &cmd);
 
+	   sim = initSimulation(cmd);
+	   printSimulationDataYaml(yamlFile, sim);
+	   printSimulationDataYaml(screenOut, sim);
+
+	   validate = initValidate(sim); // atom counts, energy
+	   timestampBarrier("Initialization Finished\n");
+
+	   timestampBarrier("Starting simulation\n");
+
+	   nSteps = sim->nSteps;
+	   printRate = sim->printRate;
+	   iStep = 0;
+	   isEam = cmd.doeam;
+	   profileStart(loopTimer);
+#endif
    // This is the CoMD main loop
-   const int nSteps = sim->nSteps;
-   const int printRate = sim->printRate;
-   int iStep = 0;
-   profileStart(loopTimer);
    for (; iStep<nSteps;)
    {
       startTimer(commReduceTimer);
@@ -123,6 +143,10 @@ int main(int argc, char** argv)
       stopTimer(timestepTimer);
 
       iStep += printRate;
+#ifdef DO_CP
+      timestampBarrier("End of Iteration\n");
+      application_checkpoint_write(getMyRank(), iStep, isEam, sim, validate);
+#endif
    }
    profileStop(loopTimer);
 
@@ -484,6 +508,119 @@ void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeT
       exit(failCode);
 }
 
+void application_checkpoint_write(int rank, int step, int doeam, SimFlat* sim, Validate* validate) {
+	FILE *fp;
+	char filename[20];
+	sprintf(filename, "check_%d", rank);
+	fp = fopen(filename, "wb");
+
+	if (fp == NULL) {
+		printf("ERROR: In opening file.\n");
+	}
+
+	fwrite(&step, sizeof(int), 1, fp);
+	fwrite(&(sim->nSteps), sizeof(int), 1, fp);
+	fwrite(&(sim->printRate), sizeof(int), 1, fp);
+	fwrite(&(sim->dt), sizeof(double), 1, fp);
+	fwrite(&(sim->ePotential), sizeof(real_t), 1, fp);
+	fwrite(&(sim->eKinetic), sizeof(real_t), 1, fp);
+
+	/********** Domain *********/
+	writeDecomposition(fp, sim->domain);
+
+	/************** LinkCell *********/
+	writeLinkCell(fp, sim->boxes);
+
+	/************** Atoms ****************/
+	writeAtoms(fp, sim);
+
+	/*************** SpeciesData ***********/
+	fwrite(sim->species->name, sizeof(char), 3, fp);
+	fwrite(&(sim->species->atomicNo), sizeof(int), 1, fp);
+	fwrite(&(sim->species->mass), sizeof(real_t), 1, fp);
+
+	/************* BasePotential ************/
+	fwrite(&doeam, sizeof(int), 1, fp);
+	if(doeam) {
+		writeEamPotential(fp, sim->pot, sim->boxes);
+	}
+	else {
+		writeLJForce(fp, sim->pot);
+	}
+
+	/************** HaloExchange *************/
+	writeAtomHaloExchange(fp, sim->atomExchange);
+
+	/*********** Validate **********/
+	fwrite(&validate->eTot0, sizeof(double), 1, fp);
+	fwrite(&validate->nAtoms0, sizeof(int), 1, fp);
+
+	/*********** Timers **********/
+	writeTimers(fp);
+
+	fclose(fp);
+}
+
+static SimFlat* application_checkpoint_read(int rank, int *step, int *doeam, Validate** validate) {
+	SimFlat* sim = comdMalloc(sizeof(SimFlat));
+	FILE *fp;
+	char filename[20];
+	sprintf(filename, "check_%d", rank);
+	fp = fopen(filename, "rb");
+
+	if (fp == NULL) {
+		printf("ERROR: Opening file.\n");
+	}
+
+	fread(step, sizeof(int), 1, fp);
+	fread(&(sim->nSteps), sizeof(int), 1, fp);
+	fread(&(sim->printRate), sizeof(int), 1, fp);
+	fread(&(sim->dt), sizeof(double), 1, fp);
+	fread(&sim->ePotential, sizeof(real_t), 1, fp);
+	fread(&sim->eKinetic, sizeof(real_t), 1, fp);
+
+	/******* Domain *******/
+	sim->domain = readDecomposition(fp);
+
+	/******** LinkCell *****/
+	sim->boxes = readLinkCell(fp);
+
+	/******** Atoms *********/
+	sim->atoms = readAtoms(fp, sim->boxes);
+
+	/******** SpeciesData *******/
+	SpeciesData* species = comdMalloc(sizeof(SpeciesData));
+
+	fread(species->name, sizeof(char), 3, fp);
+	fread(&species->atomicNo, sizeof(int), 1, fp);
+	fread(&species->mass, sizeof(real_t), 1, fp);
+
+	sim->species = species;
+
+	/******** BasePotential ********/
+	fread(doeam, sizeof(int), 1, fp);
+	if(*doeam) {
+		sim->pot = readEamPotential(fp, sim->boxes);
+	}
+	else {
+		sim->pot = readLJForce(fp);
+	}
+
+	/********* HaloExchange *******/
+	sim->atomExchange = readAtomHaloExchange(fp);
+
+	/********* Validate *********/
+	*validate = comdMalloc(sizeof(Validate));
+	fread(&((*validate)->eTot0), sizeof(double), 1, fp);
+	fread(&((*validate)->nAtoms0), sizeof(int), 1, fp);
+
+	/******** Timers *********/
+	readTimers(fp);
+
+	fclose(fp);
+
+	return sim;
+}
 // --------------------------------------------------------------
 
 

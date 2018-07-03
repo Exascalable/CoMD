@@ -83,4 +83,16 @@ void haloExchange(HaloExchange* haloExchange, void* data);
 /// Sort the atoms by gid in the specified link cell.
 void sortAtomsInCell(struct AtomsSt* atoms, struct LinkCellSt* boxes, int iBox);
 
+/// Write Atom HaloExchange to file
+void writeAtomHaloExchange(FILE *fp, HaloExchange* atomExchange);
+
+/// Read Atom HaloExchange from file
+HaloExchange* readAtomHaloExchange(FILE *fp);
+
+/// Write Force HaloExchange to file
+void writeForceHaloExchange(FILE *fp, HaloExchange* atomExchange);
+
+/// Read Force HaloExchange from file
+HaloExchange* readForceHaloExchange(FILE *fp);
+
 #endif

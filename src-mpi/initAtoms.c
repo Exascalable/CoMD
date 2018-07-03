@@ -230,3 +230,61 @@ void computeVcm(SimFlat* s, real_t vcm[3])
    vcm[2] = vcmSum[2]/totalMass;
 }
 
+void writeAtoms(FILE *fp, SimFlat* sim) {
+	fwrite(&(sim->atoms->nLocal), sizeof(int), 1, fp);
+	fwrite(&(sim->atoms->nGlobal), sizeof(int), 1, fp);
+
+	int maxtotalatoms = MAXATOMS * (sim->boxes->nTotalBoxes);
+	fwrite(sim->atoms->gid, sizeof(int), maxtotalatoms, fp);
+	fwrite(sim->atoms->iSpecies, sizeof(int), maxtotalatoms, fp);
+
+	for(int i = 0; i < maxtotalatoms; i++)
+	{
+		fwrite(sim->atoms->r[i], sizeof(real_t), 3, fp);
+	}
+	for(int i = 0; i < maxtotalatoms; i++)
+	{
+		fwrite(sim->atoms->p[i], sizeof(real_t), 3, fp);
+	}
+	for(int i = 0; i < maxtotalatoms; i++)
+	{
+		fwrite(sim->atoms->f[i], sizeof(real_t), 3, fp);
+	}
+	fwrite(sim->atoms->U, sizeof(real_t), maxtotalatoms, fp);
+}
+
+Atoms* readAtoms(FILE *fp, LinkCell* boxes) {
+	Atoms* atoms = comdMalloc(sizeof(Atoms));
+
+	fread(&atoms->nLocal, sizeof(int), 1, fp);
+	fread(&atoms->nGlobal, sizeof(int), 1, fp);
+
+	int maxtotalatoms = MAXATOMS * (boxes->nTotalBoxes);
+
+	atoms->gid =      (int*)   comdMalloc(maxtotalatoms*sizeof(int));
+	atoms->iSpecies = (int*)   comdMalloc(maxtotalatoms*sizeof(int));
+	atoms->r =        (real3*) comdMalloc(maxtotalatoms*sizeof(real3));
+	atoms->p =        (real3*) comdMalloc(maxtotalatoms*sizeof(real3));
+	atoms->f =        (real3*) comdMalloc(maxtotalatoms*sizeof(real3));
+	atoms->U =        (real_t*)comdMalloc(maxtotalatoms*sizeof(real_t));
+
+	fread(atoms->gid, sizeof(int), maxtotalatoms, fp);
+	fread(atoms->iSpecies, sizeof(int), maxtotalatoms, fp);
+
+	for(int i = 0; i < maxtotalatoms; i++)
+	{
+		fread(atoms->r[i], sizeof(real_t), 3, fp);
+	}
+	for(int i = 0; i < maxtotalatoms; i++)
+	{
+		fread(atoms->p[i], sizeof(real_t), 3, fp);
+	}
+	for(int i = 0; i < maxtotalatoms; i++)
+	{
+		fread(atoms->f[i], sizeof(real_t), 3, fp);
+	}
+	fread(atoms->U, sizeof(real_t), maxtotalatoms, fp);
+
+	return atoms;
+}
+

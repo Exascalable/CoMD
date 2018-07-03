@@ -233,3 +233,40 @@ int ljForce(SimFlat* s)
 
    return 0;
 }
+
+void writeLJForce(FILE *fp, BasePotential* p) {
+	LjPotential* pot = (LjPotential*) p;
+
+	fwrite(&(pot->cutoff), sizeof(real_t), 1, fp);
+	fwrite(&(pot->mass), sizeof(real_t), 1, fp);
+	fwrite(&(pot->lat), sizeof(real_t), 1, fp);
+
+	fwrite(pot->latticeType, sizeof(char), 8, fp);
+	fwrite(pot->name, sizeof(char), 3, fp);
+
+	fwrite(&(pot->atomicNo), sizeof(int), 1, fp);
+
+	fwrite(&(pot->sigma), sizeof(real_t), 1, fp);
+	fwrite(&(pot->epsilon), sizeof(real_t), 1, fp);
+}
+
+BasePotential* readLJForce(FILE *fp) {
+	LjPotential *pot = (LjPotential*) comdMalloc(sizeof(LjPotential));
+	pot->force = ljForce;
+	pot->print = ljPrint;
+	pot->destroy = ljDestroy;
+
+	fread(&pot->cutoff, sizeof(real_t), 1, fp);
+	fread(&pot->mass, sizeof(real_t), 1, fp);
+	fread(&pot->lat, sizeof(real_t), 1, fp);
+
+	fread(pot->latticeType, sizeof(char), 8, fp);
+	fread(pot->name, sizeof(char), 3, fp);
+
+	fread(&pot->atomicNo, sizeof(int), 1, fp);
+
+	fread(&pot->sigma, sizeof(real_t), 1, fp);
+	fread(&pot->epsilon, sizeof(real_t), 1, fp);
+
+	return (BasePotential*) pot;
+}

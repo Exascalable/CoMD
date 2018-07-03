@@ -30,4 +30,10 @@ struct DomainSt* initDecomposition(int xproc, int yproc, int zproc,
 /// Find the MPI rank of a neighbor domain from a relative coordinate.
 int processorNum(Domain* domain, int dix, int diy, int dik);
 
+/// Write Domain object to checkpoint file
+void writeDecomposition(FILE *fp, Domain* domain);
+
+/// Read Domain object from checkpoint file
+struct DomainSt* readDecomposition(FILE *fp);
+
 #endif

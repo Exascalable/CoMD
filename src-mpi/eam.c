@@ -479,8 +479,13 @@ void destroyInterpolationObject(InterpolationObject** a)
    if ( ! *a ) return;
    if ( (*a)->values)
    {
+#ifdef RESTART
+	  comdFree((*a)->values);
+#else
       (*a)->values--;
       comdFree((*a)->values);
+#endif
+
    }
    comdFree(*a);
    *a = NULL;
@@ -836,4 +841,113 @@ void typeNotSupported(const char* callSite, const char* type)
    fprintf(screenOut,
           "%s: Potential type %s not supported. Fatal Error.\n", callSite, type);
    exit(-1);
+}
+
+void writeEamPotential(FILE *fp, BasePotential* p, LinkCell* boxes) {
+	EamPotential* pot = (EamPotential*) p;
+
+	fwrite(&(pot->cutoff), sizeof(real_t), 1, fp);
+	fwrite(&(pot->mass), sizeof(real_t), 1, fp);
+	fwrite(&(pot->lat), sizeof(real_t), 1, fp);
+
+	fwrite(pot->latticeType, sizeof(char), 8, fp);
+	fwrite(&(pot->name), sizeof(char), 3, fp);
+
+	fwrite(&(pot->atomicNo), sizeof(int), 1, fp);
+
+	int phiSize = pot->phi->n;
+	fwrite(&phiSize, sizeof(int), 1, fp);
+	fwrite(&(pot->phi->x0), sizeof(real_t), 1, fp);
+	fwrite(&(pot->phi->invDx), sizeof(real_t), 1, fp);
+	fwrite(pot->phi->values, sizeof(real_t), phiSize + 3, fp);
+
+	int rhoSize = pot->rho->n;
+	fwrite(&rhoSize, sizeof(int), 1, fp);
+	fwrite(&(pot->rho->x0), sizeof(real_t), 1, fp);
+	fwrite(&(pot->rho->invDx), sizeof(real_t), 1, fp);
+	fwrite(pot->rho->values, sizeof(real_t), rhoSize + 3, fp);
+
+	int fSize = pot->f->n;
+	fwrite(&fSize, sizeof(int), 1, fp);
+	fwrite(&(pot->f->x0), sizeof(real_t), 1, fp);
+	fwrite(&(pot->f->invDx), sizeof(real_t), 1, fp);
+	fwrite(pot->f->values, sizeof(real_t), fSize + 3, fp);
+
+	/// Size for rhobar and dfembed
+	int size = MAXATOMS * boxes->nTotalBoxes;
+	fwrite(pot->rhobar, sizeof(real_t), size, fp);
+	fwrite(pot->dfEmbed, sizeof(real_t), size, fp);
+
+	/// HaloExchange
+	writeForceHaloExchange(fp, pot->forceExchange);
+
+	fwrite(pot->forceExchangeData->dfEmbed, sizeof(real_t), size, fp);
+
+	writeLinkCell(fp, pot->forceExchangeData->boxes);
+}
+
+BasePotential* readEamPotential(FILE *fp, LinkCell* boxes) {
+	EamPotential* pot = comdMalloc(sizeof(EamPotential));
+
+	pot->force = eamForce;
+	pot->print = eamPrint;
+	pot->destroy = eamDestroy;
+
+	fread(&(pot->cutoff), sizeof(real_t), 1, fp);
+	fread(&(pot->mass), sizeof(real_t), 1, fp);
+	fread(&(pot->lat), sizeof(real_t), 1, fp);
+
+	fread(pot->latticeType, sizeof(char), 8, fp);
+	fread(&(pot->name), sizeof(char), 3, fp);
+
+	fread(&(pot->atomicNo), sizeof(int), 1, fp);
+
+	InterpolationObject* p = (InterpolationObject*) comdMalloc(sizeof(InterpolationObject));
+
+	int phiSize;
+	fread(&phiSize, sizeof(int), 1, fp);
+	p->n = phiSize;
+	fread(&p->x0, sizeof(real_t), 1, fp);
+	fread(&p->invDx, sizeof(real_t), 1, fp);
+	p->values = (real_t*) comdMalloc((phiSize + 3) * sizeof(real_t));
+	fread(p->values, sizeof(real_t), phiSize + 3, fp);
+	pot->phi = p;
+
+	InterpolationObject* r = (InterpolationObject*) comdMalloc(sizeof(InterpolationObject));
+	int rhoSize;
+	fread(&rhoSize, sizeof(int), 1, fp);
+	r->n = rhoSize;
+	fread(&(r->x0), sizeof(real_t), 1, fp);
+	fread(&(r->invDx), sizeof(real_t), 1, fp);
+	r->values = (real_t*) comdMalloc((rhoSize + 3) * sizeof(real_t));
+	fread(r->values, sizeof(real_t), rhoSize + 3, fp);
+	pot->rho = r;
+
+	InterpolationObject* f = (InterpolationObject*) comdMalloc(sizeof(InterpolationObject));
+	int fSize;
+	fread(&fSize, sizeof(int), 1, fp);
+	f->n = fSize;
+	fread(&(f->x0), sizeof(real_t), 1, fp);
+	fread(&(f->invDx), sizeof(real_t), 1, fp);
+	f->values = (real_t*) comdMalloc((fSize + 3) * sizeof(real_t));
+	fread(f->values, sizeof(real_t), fSize + 3, fp);
+	pot->f = f;
+
+	/// Size for rhobar and dfembed
+	int size = MAXATOMS * boxes->nTotalBoxes;
+	pot->rhobar = (real_t*) comdMalloc(size * sizeof(real_t));
+	fread(pot->rhobar, sizeof(real_t), size, fp);
+	pot->dfEmbed = (real_t*) comdMalloc(size * sizeof(real_t));
+	fread(pot->dfEmbed, sizeof(real_t), size, fp);
+
+	/// HaloExchange
+	pot->forceExchange = readForceHaloExchange(fp);
+
+	pot->forceExchangeData = comdMalloc(sizeof(ForceExchangeData));
+	pot->forceExchangeData->dfEmbed = comdMalloc(size * sizeof(real_t));
+	fread(pot->forceExchangeData->dfEmbed, sizeof(real_t), size, fp);
+
+	pot->forceExchangeData->boxes = readLinkCell(fp);
+
+	return (BasePotential*) pot;
 }

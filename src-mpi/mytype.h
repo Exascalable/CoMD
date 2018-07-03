@@ -4,6 +4,8 @@
 #ifndef __MYTYPE_H_
 #define __MYTYPE_H_
 
+#include <stdio.h>
+
 /// \def SINGLE determines whether single or double precision is built
 #ifdef SINGLE
 typedef float real_t;  //!< define native type for CoMD as single precision

@@ -64,3 +64,34 @@ int processorNum(Domain* domain, int dix, int diy, int diz)
 
    return ix + procGrid[0] *(iy + procGrid[1]*iz);
 }
+
+/// \param [in] fp File pointer to write
+/// \param [in] domain Object to write in file
+void writeDecomposition(FILE *fp, Domain* domain) {
+	fwrite(domain->procGrid, sizeof(int), 3, fp);
+	fwrite(domain->procCoord, sizeof(int), 3, fp);
+
+	fwrite(domain->globalMin, sizeof(real_t), 3, fp);
+	fwrite(domain->globalMax, sizeof(real_t), 3, fp);
+	fwrite(domain->globalExtent, sizeof(real_t), 3, fp);
+	fwrite(domain->localMin, sizeof(real_t), 3, fp);
+	fwrite(domain->localMax, sizeof(real_t), 3, fp);
+	fwrite(domain->localExtent, sizeof(real_t), 3, fp);
+}
+
+/// \param [in] fp File pointer to read from
+Domain* readDecomposition(FILE *fp) {
+	Domain* dd = comdMalloc(sizeof(Domain));
+
+	fread(dd->procGrid, sizeof(int), 3, fp);
+	fread(dd->procCoord, sizeof(int), 3, fp);
+
+	fread(dd->globalMin, sizeof(real_t), 3, fp);
+	fread(dd->globalMax, sizeof(real_t), 3, fp);
+	fread(dd->globalExtent, sizeof(real_t), 3, fp);
+	fread(dd->localMin, sizeof(real_t), 3, fp);
+	fread(dd->localMax, sizeof(real_t), 3, fp);
+	fread(dd->localExtent, sizeof(real_t), 3, fp);
+
+	return dd;
+}

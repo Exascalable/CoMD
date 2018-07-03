@@ -660,3 +660,78 @@ int sortAtomsById(const void* a, const void* b)
    return 1;
 }
 
+void writeForceHaloExchange(FILE *fp, HaloExchange* hh) {
+	fwrite(hh->nbrRank, sizeof(int), 6, fp);
+	fwrite(&(hh->bufCapacity), sizeof(int), 1, fp);
+
+	ForceExchangeParms* p = (ForceExchangeParms*) hh->parms;
+	fwrite(p->nCells, sizeof(int), 6, fp);
+	for (int i = 0; i < 6; i++) {
+		fwrite(p->sendCells[i], sizeof(int), p->nCells[i], fp);
+	}
+	for (int i = 0; i < 6; i++) {
+		fwrite(p->recvCells[i], sizeof(int), p->nCells[i], fp);
+	}
+}
+
+HaloExchange* readForceHaloExchange(FILE *fp) {
+	HaloExchange* hh = comdMalloc(sizeof(HaloExchange));
+	hh->loadBuffer = loadForceBuffer;
+	hh->unloadBuffer = unloadForceBuffer;
+	hh->destroy = destroyForceExchange;
+
+	fread(hh->nbrRank, sizeof(int), 6, fp);
+	fread(&(hh->bufCapacity), sizeof(int), 1, fp);
+
+	ForceExchangeParms* p = comdMalloc(sizeof(ForceExchangeParms));
+	fread(p->nCells, sizeof(int), 6, fp);
+	for (int i = 0; i < 6; i++) {
+		p->sendCells[i] = comdMalloc(p->nCells[i] * sizeof(int));
+		fread(p->sendCells[i], sizeof(int), p->nCells[i], fp);
+	}
+	for (int i = 0; i < 6; i++) {
+		p->recvCells[i] = comdMalloc(p->nCells[i] * sizeof(int));
+		fread(p->recvCells[i], sizeof(int), p->nCells[i], fp);
+	}
+	hh->parms = p;
+
+	return hh;
+}
+
+void writeAtomHaloExchange(FILE *fp, HaloExchange* hh) {
+	fwrite(hh->nbrRank, sizeof(int), 6, fp);
+	fwrite(&(hh->bufCapacity), sizeof(int), 1, fp);
+
+	AtomExchangeParms* p = (AtomExchangeParms*) hh->parms;
+	fwrite(p->nCells, sizeof(int), 6, fp);
+	for (int i = 0; i < 6; i++) {
+		fwrite(p->cellList[i], sizeof(int), p->nCells[i], fp);
+	}
+	for (int i = 0; i < 6; i++) {
+		fwrite(p->pbcFactor[i], sizeof(real_t), 3, fp);
+	}
+}
+
+HaloExchange* readAtomHaloExchange(FILE *fp) {
+	HaloExchange* hh = comdMalloc(sizeof(HaloExchange));
+	hh->loadBuffer = loadAtomsBuffer;
+	hh->unloadBuffer = unloadAtomsBuffer;
+	hh->destroy = destroyAtomsExchange;
+
+	fread(hh->nbrRank, sizeof(int), 6, fp);
+	fread(&(hh->bufCapacity), sizeof(int), 1, fp);
+
+	AtomExchangeParms* p = comdMalloc(sizeof(AtomExchangeParms));
+	fread(p->nCells, sizeof(int), 6, fp);
+	for (int i = 0; i < 6; i++) {
+		p->cellList[i] = comdMalloc(p->nCells[i] * sizeof(int));
+		fread(p->cellList[i], sizeof(int), p->nCells[i], fp);
+	}
+	for (int i = 0; i < 6; i++) {
+		p->pbcFactor[i] = comdMalloc(3 * sizeof(real_t));
+		fread(p->pbcFactor[i], sizeof(real_t), 3, fp);
+	}
+	hh->parms = p;
+
+	return hh;
+}

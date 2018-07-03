@@ -62,6 +62,36 @@ comments in Makefile.vanilla for information about specifying the name
 of the C compiler and/or additional compiler switches that might be
 necessary for your platform.
 
+Building and Running CoMD (MPI) with Checkpoint/Restart (CPR)
+=============================================================
+
+$ cd src-mpi
+ 
+$ cp Makefile.vanilla Makefile
+
+$ vi Makefile
+Turn DO_CP ON --> this will take application checkpoint (check_{Rank}) after each
+iteration of the simulation loop for each MPI process.
+
+$ make
+
+$ cd ..
+
+$ mpirun -np <number_of_processes> bin/CoMD-mpi <arg1> ... <argN>
+
+If a process fails during the simulation loop,
+
+$ cd src-mpi
+
+$ vi Makefile
+Turn DO_RESTART ON --> this will restart the simulation from last 
+saved checkpoint; otherwise the simulation will start from the beginning.
+
+$ make
+
+$ cd ..
+
+$ mpirun -np <number_of_processes> bin/CoMD-mpi <arg1> ... <argN>
 
 What's New
 ==========

@@ -20,4 +20,10 @@ typedef struct ForceExchangeDataSt
 }ForceExchangeData;
 
 struct BasePotentialSt* initEamPot(const char* dir, const char* file, const char* type);
+
+/// Write BasePotential object to checkpoint file
+void writeEamPotential(FILE *fp, struct BasePotentialSt* p, struct LinkCellSt* boxes);
+
+/// Read BasePotential object from checkpoint file
+struct BasePotentialSt* readEamPotential(FILE *fp, struct LinkCellSt* boxes);
 #endif

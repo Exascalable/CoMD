@@ -307,3 +307,10 @@ void timerStats(void)
    }
 }
 
+void writeTimers(FILE *fp) {
+	fwrite(perfTimer, sizeof(Timers), numberOfTimers, fp);
+}
+
+void readTimers(FILE *fp) {
+	fread(perfTimer, sizeof(Timers), numberOfTimers, fp);
+}

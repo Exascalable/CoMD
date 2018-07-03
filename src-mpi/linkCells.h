@@ -46,5 +46,9 @@ void updateLinkCells(LinkCell* boxes, struct AtomsSt* atoms);
 
 int maxOccupancy(LinkCell* boxes);
 
+/// Write link cell data structure to file
+void writeLinkCell(FILE *fp, LinkCell* boxes);
 
+/// Read link cell data structure from file
+LinkCell* readLinkCell(FILE *fp);
 #endif

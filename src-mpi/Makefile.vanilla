@@ -9,6 +9,13 @@ SHELL = /bin/bash
 DOUBLE_PRECISION = ON
 # MPI for parallel (ON/OFF)
 DO_MPI = ON
+# Write Checkpoint (ON/OFF). 
+# Compile with DO_CP ON will checkpoint application state
+# after 10 (default printRate value) steps.
+DO_CP = OFF
+# Read Checkpoint (ON/OFF).
+# Compile with DO_RESTART ON will load the last checkpoint
+DO_RESTART = OFF
 
 ### Set your desired C compiler and any necessary flags.  Note that CoMD
 ### uses some c99 features.  You can also set flags for optimization and
@@ -55,7 +62,14 @@ CFLAGS += -DDOUBLE
 else
 CFLAGS += -DSINGLE
 endif
-
+# Check for checkpoint write
+ifeq ($(DO_CP), ON)
+CFLAGS += -DDO_CP
+endif
+# Check for checkpoint read
+ifeq ($(DO_RESTART), ON)
+OPTFLAGS += -DRESTART
+endif
 # Set executable name and add includes & libraries for MPI if needed.
 CoMD_VARIANT = CoMD-serial
 ifeq ($(DO_MPI), ON)

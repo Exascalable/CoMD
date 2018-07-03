@@ -454,4 +454,35 @@ void getTuple(LinkCell* boxes, int iBox, int* ixp, int* iyp, int* izp)
    *izp = iz;
 }
 
+void writeLinkCell(FILE *fp, LinkCell* boxes) {
+	fwrite(boxes->gridSize, sizeof(int), 3, fp);
+	fwrite(&(boxes->nLocalBoxes), sizeof(int), 1, fp);
+	fwrite(&(boxes->nHaloBoxes), sizeof(int), 1, fp);
+	fwrite(&(boxes->nTotalBoxes), sizeof(int), 1, fp);
 
+	fwrite(boxes->localMin, sizeof(real_t), 3, fp);
+	fwrite(boxes->localMax, sizeof(real_t), 3, fp);
+	fwrite(boxes->boxSize, sizeof(real_t), 3, fp);
+	fwrite(boxes->invBoxSize, sizeof(real_t), 3, fp);
+
+	fwrite(boxes->nAtoms, sizeof(int), boxes->nTotalBoxes, fp);
+}
+
+LinkCell* readLinkCell(FILE *fp) {
+	LinkCell* ll = comdMalloc(sizeof(LinkCell));
+	fread(ll->gridSize, sizeof(int), 3, fp);
+
+	fread(&ll->nLocalBoxes, sizeof(int), 1, fp);
+	fread(&ll->nHaloBoxes, sizeof(int), 1, fp);
+	fread(&(ll->nTotalBoxes), sizeof(int), 1, fp);
+
+	fread(ll->localMin, sizeof(real_t), 3, fp);
+	fread(ll->localMax, sizeof(real_t), 3, fp);
+	fread(ll->boxSize, sizeof(real_t), 3, fp);
+	fread(ll->invBoxSize, sizeof(real_t), 3, fp);
+
+	ll->nAtoms = comdMalloc(ll->nTotalBoxes*sizeof(int));
+	fread(ll->nAtoms, sizeof(int), ll->nTotalBoxes, fp);
+
+	return ll;
+}

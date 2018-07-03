@@ -65,4 +65,10 @@ void printPerformanceResults(int nGlobalAtoms, int printRate);
 
 /// Print timing results to Yaml file
 void printPerformanceResultsYaml(FILE* file);
+
+/// Write Timing results to file
+void writeTimers(FILE *fp);
+
+/// Read timing results from file
+void readTimers(FILE *fp);
 #endif

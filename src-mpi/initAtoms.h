@@ -35,4 +35,10 @@ void createFccLattice(int nx, int ny, int nz, real_t lat, struct SimFlatSt* s);
 void setVcm(struct SimFlatSt* s, real_t vcm[3]);
 void setTemperature(struct SimFlatSt* s, real_t temperature);
 void randomDisplacements(struct SimFlatSt* s, real_t delta);
+
+/// Write Atoms object to file
+void writeAtoms(FILE *fp, struct SimFlatSt* sim);
+
+/// Read Atoms object from file
+Atoms* readAtoms(FILE *fp, struct LinkCellSt* boxes);
 #endif
